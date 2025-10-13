@@ -13,6 +13,10 @@
 #define WIFI_PASS ""
 #endif
 
+#ifndef WIFI_TX_POWER
+#define WIFI_TX_POWER WIFI_POWER_8_5dBm
+#endif
+
 SplitFlapWebServer::SplitFlapWebServer(JsonSettings &settings)
     : settings(settings), server(80), multiWordDelay(1000), rebootRequired(false), attemptReconnect(false),
       multiWordCurrentIndex(0), numMultiWords(0), wifiCheckInterval(1000), connectionMode(0), checkDateInterval(250),
@@ -143,12 +147,12 @@ String SplitFlapWebServer::getCurrentDay() {
     return String(dayStr);
 }
 
-void SplitFlapWebServer::setMode(int targetMode) {
-    settings.putInt("mode", targetMode);
+void SplitFlapWebServer::setMode(DisplayMode targetMode) {
+    settings.putInt("mode", static_cast<int>(targetMode));
 }
 
-int SplitFlapWebServer::getMode() {
-    return settings.getInt("mode");
+DisplayMode SplitFlapWebServer::getMode() {
+    return static_cast<DisplayMode>(settings.getInt("mode"));
 }
 
 void SplitFlapWebServer::checkWiFi() {
@@ -241,7 +245,7 @@ void SplitFlapWebServer::enableOta() {
 bool SplitFlapWebServer::connectToWifi() {
     if (loadWiFiCredentials()) {
         unsigned long startAttemptTime = millis();
-        const unsigned long timeout = 20000; // 20 seconds
+        const unsigned long timeout = 30000; // 30 seconds
         unsigned long lastPrintTime = startAttemptTime;
 
         while (WiFi.status() != WL_CONNECTED) {
@@ -344,9 +348,8 @@ void SplitFlapWebServer::startWebServer() {
         this->attemptReconnect = true;
     });
 
-    server.addHandler(new AsyncCallbackJsonWebHandler(
-        "/settings",
-        [this](AsyncWebServerRequest *request, JsonVariant &json) {
+    server.addHandler(
+        new AsyncCallbackJsonWebHandler("/settings", [this](AsyncWebServerRequest *request, JsonVariant &json) {
         if (request->method() != HTTP_POST) {
             return request->send(405, "application/json", "{\"error\":\"Method Not Allowed\"}");
         }
@@ -386,8 +389,8 @@ void SplitFlapWebServer::startWebServer() {
             response["redirect"] = "http://" + json["mdns"].as<String>() + ".local/settings.html";
         }
 
-        if ((json["mqtt_server"].is<String>() && json["mqtt_server"].as<String>() != settings.getString("mqtt_server")
-            ) ||
+        if ((json["mqtt_server"].is<String>() &&
+             json["mqtt_server"].as<String>() != settings.getString("mqtt_server")) ||
             (json["mqtt_port"].is<int>() && json["mqtt_port"].as<int>() != settings.getInt("mqtt_port")) ||
             (json["mqtt_user"].is<String>() && json["mqtt_user"].as<String>() != settings.getString("mqtt_user")) ||
             (json["mqtt_pass"].is<String>() && json["mqtt_pass"].as<String>() != settings.getString("mqtt_pass"))) {
@@ -414,11 +417,11 @@ void SplitFlapWebServer::startWebServer() {
 
         this->rebootRequired = rebootRequired;
         this->attemptReconnect = reconnect;
-    }
-    ));
+    })
+    );
 
-    server
-        .addHandler(new AsyncCallbackJsonWebHandler("/text", [this](AsyncWebServerRequest *request, JsonVariant &json) {
+    server.addHandler(
+        new AsyncCallbackJsonWebHandler("/text", [this](AsyncWebServerRequest *request, JsonVariant &json) {
         if (request->method() != HTTP_POST) {
             return request->send(405, "application/json", "{\"error\":\"Method Not Allowed\"}");
         }
@@ -462,7 +465,7 @@ void SplitFlapWebServer::startWebServer() {
             String word = decodeURIComponent(json["words"][0].as<String>());
             Serial.println("Single Word: " + word);
             this->setInputString(word);
-            this->setMode(0); // change mode last once all variables updated
+            this->setMode(DisplayMode::SingleInput); // change mode last once all variables updated
         }
 
         if (json["mode"] == "multiple") {
@@ -480,14 +483,40 @@ void SplitFlapWebServer::startWebServer() {
             Serial.println("Multiple Words: " + words);
             Serial.println("Number of Words: " + String(this->numMultiWords));
 
-            this->setMode(1);
+            this->setMode(DisplayMode::MultiInput);
         }
 
         response["message"] = "Text updated successfully!";
         response["type"] = "success";
 
         request->send(200, "application/json", response.as<String>());
-    }));
+    })
+    );
+
+    server.addHandler(
+        new AsyncCallbackJsonWebHandler("/home", [this](AsyncWebServerRequest *request, JsonVariant &json) {
+        if (request->method() != HTTP_POST) {
+            return request->send(405, "application/json", "{\"error\":\"Method Not Allowed\"}");
+        }
+
+        Serial.println("Received home request");
+        Serial.println(json.as<String>());
+
+        JsonDocument response;
+
+        // if (response["message"].is<String>()) {
+        //     response["type"] = "error";
+        //     return request->send(400, "application/json", response.as<String>());
+        // }
+
+        this->setMode(DisplayMode::CheckMagnets);
+
+        response["message"] = "Home successful!";
+        response["type"] = "success";
+
+        request->send(200, "application/json", response.as<String>());
+    })
+    );
 
     server.onNotFound(fourOhFour);
 

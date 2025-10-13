@@ -14,6 +14,7 @@ void SplitFlapMqtt::setup() {
 
     topic_command = "splitflap/" + mdns + "/set";
     topic_state = "splitflap/" + mdns + "/state";
+    topic_magnets = "splitflap/" + mdns + "/magnets";
     topic_avail = "splitflap/" + mdns + "/availability";
     topic_config_text = "homeassistant/text/splitflap_text_" + mdns + "/config";
     topic_config_sensor = "homeassistant/sensor/splitflap_sensor_" + mdns + "/config";
@@ -99,6 +100,11 @@ void SplitFlapMqtt::setDisplay(SplitFlapDisplay *d) {
 void SplitFlapMqtt::publishState(const String &message) {
     Serial.println("[MQTT] Publishing state: " + message);
     mqttClient.publish(topic_state.c_str(), message.c_str(), true);
+}
+
+void SplitFlapMqtt::publishMagnets(const String &magnetState) {
+    Serial.println("[MQTT] Publishing magnets: " + magnetState);
+    mqttClient.publish(topic_magnets.c_str(), magnetState.c_str(), true);
 }
 
 void SplitFlapMqtt::loop() {

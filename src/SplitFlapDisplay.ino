@@ -8,6 +8,8 @@
 #include "SplitFlapDisplay.h"
 #include "SplitFlapMqtt.h"
 #include "SplitFlapWebServer.h"
+#include "soc/rtc_cntl_reg.h"
+#include "soc/soc.h"
 
 #include <Arduino.h>
 #include <WiFiClient.h>
@@ -52,6 +54,8 @@ SplitFlapWebServer webServer(settings);
 SplitFlapMqtt splitflapMqtt(settings, wifiClient);
 
 void setup() {
+    // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
+
     // put your setup code here, to run once:
     Serial.begin(SERIAL_SPEED);
 
@@ -62,47 +66,49 @@ void setup() {
     Serial.println("Init Web Server");
     webServer.init();
 
-    if (! webServer.connectToWifi()) {
+    bool wifiConnected = webServer.connectToWifi();
+
+    if (! wifiConnected) {
         webServer.startAccessPoint();
-        webServer.enableOta();
-        webServer.startMDNS();
-        webServer.startWebServer();
+    }
 
-        display.init();
-        display.homeToString("");
+    webServer.enableOta();
+    webServer.startMDNS();
+    webServer.startWebServer();
 
+    // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 1); // enable brownout detector
+
+    display.init();
+    display.checkMagnets();
+
+    if (wifiConnected) {
+        splitflapMqtt.setup();
+        splitflapMqtt.setDisplay(&display);
+        display.setMqtt(&splitflapMqtt);
+        display.writeString("Hello");
+        delay(2500);
+        display.writeString("");
+    } else {
         if (display.getNumModules() == 8) {
             display.writeString("Wifi Err");
         } else {
             display.writeChar('X');
         }
-    } else {
-        webServer.enableOta();
-        webServer.startMDNS();
-        webServer.startWebServer();
-
-        display.init();
-        splitflapMqtt.setup();
-        splitflapMqtt.setDisplay(&display);
-        display.setMqtt(&splitflapMqtt);
-
-        display.homeToString("OK");
-        delay(250);
-        display.writeString("");
     }
 }
 
 void loop() {
     splitflapMqtt.loop();
 
-    // check what mode the display is in, this value is updated by the web server
-    switch (webServer.getMode()) {
-        case 0: singleInputMode(); break;
-        case 1: multiInputMode(); break;
-        case 2: dateMode(); break;
-        case 3: timeMode(); break;
-        case 4: break;
-        case 5: randomTest(); break;
+    DisplayMode mode = webServer.getMode();
+    switch (mode) {
+        case DisplayMode::SingleInput: singleInputMode(); break;
+        case DisplayMode::MultiInput: multiInputMode(); break;
+        case DisplayMode::Date: dateMode(); break;
+        case DisplayMode::Time: timeMode(); break;
+        case DisplayMode::Mqtt: break;
+        case DisplayMode::RandomTest: randomTest(); break;
+        case DisplayMode::CheckMagnets: display.checkMagnets(); break;
         default: break;
     }
 
@@ -112,6 +118,8 @@ void loop() {
     reconnectIfNeeded();
 
     webServer.checkRebootRequired();
+
+    // display.readMagnets();
     yield();
 }
 

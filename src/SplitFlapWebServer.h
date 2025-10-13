@@ -11,6 +11,16 @@
 #include <WiFi.h>
 #include <time.h>
 
+enum class DisplayMode : int {
+    SingleInput = 0,
+    MultiInput = 1,
+    Date = 2,
+    Time = 3,
+    Mqtt = 4,
+    RandomTest = 5,
+    CheckMagnets = 6
+};
+
 class SplitFlapWebServer {
   public:
     SplitFlapWebServer(JsonSettings &settings);
@@ -35,7 +45,7 @@ class SplitFlapWebServer {
     int getWifiCheckInterval() { return wifiCheckInterval; }
 
     // Mode
-    int getMode();
+    DisplayMode getMode();
 
     // Mode 0 - Single String
     String getInputString() const { return inputString; }
@@ -71,7 +81,7 @@ class SplitFlapWebServer {
     void setInputString(String input) { inputString = input; }
     void setMultiInputString(String input) { multiInputString = input; }
 
-    void setMode(int targetMode);
+    void setMode(DisplayMode targetMode);
     void setMultiDelay(int input) { multiWordDelay = input; }
 
     unsigned long lastCheckDateTime;

@@ -13,6 +13,7 @@ class SplitFlapMqtt {
     void setup();
     void loop();                                               // needed for PubSubClient3
     void publishState(const String &message);
+    void publishMagnets(const String &magnetState);
     void setDisplay(SplitFlapDisplay *display);
     bool isConnected();
 
@@ -32,6 +33,7 @@ class SplitFlapMqtt {
     String mqttPass;
     String topic_command;
     String topic_state;
+    String topic_magnets;
     String topic_avail;
     String topic_config_text;
     String topic_config_sensor;
