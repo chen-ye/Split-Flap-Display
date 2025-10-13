@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "build": "npm run format && npm run assets && npm run pio",
+        "test": "npm run build && npm run pio:monitor",
         "format": "npm run format:cpp && npm run format:web",
         "format:web": "prettier --write 'src/**/*.{js,json,css,html}' platformio.ini package.json README.md vite.config.mjs tailwind.config.js",
         "format:cpp": "command -v clang-format >/dev/null 2>&1 && find src -iname '*.h' -o -iname '*.cpp' -o -iname '*.ino' | xargs clang-format -i || echo 'clang-format not found, skipping format:cpp'",
