@@ -36,6 +36,9 @@ class SplitFlapDisplay {
     int getCharsetSize() const { return charSetSize; }
     void setMqtt(SplitFlapMqtt *mqttHandler);
 
+    void checkMagnets();
+    void readMagnets();
+
   private:
     JsonSettings &settings;
 

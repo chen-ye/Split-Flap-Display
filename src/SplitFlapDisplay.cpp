@@ -132,7 +132,8 @@ void SplitFlapDisplay::home(float speed) {
 }
 
 void SplitFlapDisplay::homeToString(String homeString, float speed, bool centering) {
-    Serial.println("Homing");
+    Serial.println("Homing to String:");
+    Serial.println(homeString);
     int targetPositions[numModules];
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = (modules[i].getPosition() - 1 + stepsPerRot) % stepsPerRot;
@@ -143,7 +144,8 @@ void SplitFlapDisplay::homeToString(String homeString, float speed, bool centeri
 }
 
 void SplitFlapDisplay::homeToChar(char homeChar, float speed) {
-    Serial.println("Homing");
+    Serial.println("Homing to Char:");
+    Serial.println(homeChar);
     int targetPositions[numModules];
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = (modules[i].getPosition() - 1 + stepsPerRot) % stepsPerRot;
@@ -168,6 +170,8 @@ void SplitFlapDisplay::writeChar(char inputChar, float speed) {
 
 void SplitFlapDisplay::writeString(String inputString, float speed, bool centering) {
     String displayString = inputString.substring(0, numModules);
+    Serial.println("Write String:");
+    Serial.println(inputString);
 
     if (centering) {
         int totalPadding = numModules - displayString.length();
@@ -198,13 +202,27 @@ void SplitFlapDisplay::writeString(String inputString, float speed, bool centeri
     // Iterate through the input string and process each character
     for (int i = 0; i < displayString.length(); i++) {
         char currentChar = displayString[i];
-        // Serial.println(currentChar);
         targetPositions[i] = modules[i].getCharPosition(currentChar);
     }
     moveTo(targetPositions, speed);
 
+    bool hasMagnetDetected[numModules] = {};
+    for (int i = 0; i < numModules; i++) {
+        hasMagnetDetected[i] = modules[i].getHasMagnetDetected();
+    }
+
     if (mqtt && mqtt->isConnected()) {
         mqtt->publishState(displayString);
+
+        String magnetState = "{";
+        for (int i = 0; i < numModules; i++) {
+            magnetState += "\"" + String(i) + "\": " + (hasMagnetDetected[i] ? "true" : "false");
+            if (i < numModules - 1) {
+                magnetState += ", ";
+            }
+        }
+        magnetState += "}";
+        mqtt->publishMagnets(magnetState);
     }
 }
 
@@ -236,7 +254,16 @@ void SplitFlapDisplay::moveTo(int targetPositions[], float speed, bool releaseMo
         ); // Constrain to avoid errors with incorrect inputs
         resetLatches[i] = true;
         lastStepTimes[i] = currentTime;
-        if (modules[i].getPosition() != targetPositions[i]) {
+
+        auto currentPosition = modules[i].getPosition();
+        // Serial.print("Module: ");
+        // Serial.println(i);
+        // Serial.print("Current Position:");
+        // Serial.println(currentPosition);
+        // Serial.print("Target Position:");
+        // Serial.println(targetPositions[i]);
+
+        if (currentPosition != targetPositions[i]) {
             needsStepping[i] = true;
         } else {
             needsStepping[i] = false;
@@ -265,20 +292,21 @@ void SplitFlapDisplay::moveTo(int targetPositions[], float speed, bool releaseMo
             // check every modules sensor
             for (int i = 0; i < numModules; i++) {
                 if (needsStepping[i] &&
-                    (modules[i].readHallEffectSensor() == true
-                    )) { // only check sensors where the module is still moving
+                    (modules[i].readHallEffectSensor() ==
+                     true)) { // only check sensors where the module is still moving
                     if (! resetLatches[i]) {
                         // UNCOMMENTING THIS WILL PROBBALY MAKE THE MOTORS INACCURATE, DUE
                         // TO TIME TAKEN TO PRINT
-                        //  Serial.print("Module: ");
-                        //  Serial.print(i);
-                        //  Serial.print(" Magnet Position: ");
-                        //  Serial.print(modules[i].getMagnetPosition());
-                        //  Serial.print(" Actual Position: ");
-                        //  Serial.print(modules[i].getPosition());
-                        //  Serial.print(" Error: ");
-                        //  Serial.println((modules[i].getMagnetPosition() -
-                        //  modules[i].getPosition()));
+                        // Serial.print("Module: ");
+                        // Serial.print(i);
+                        // Serial.print(" Magnet Position: ");
+                        // Serial.print(modules[i].getMagnetPosition());
+                        // Serial.print(" Actual Position: ");
+                        // Serial.print(modules[i].getPosition());
+                        // Serial.print(" Error: ");
+                        // Serial.println((modules[i].getMagnetPosition() -
+                        // modules[i].getPosition()));
+
                         modules[i].magnetDetected(); // update position to the modules
                         // magnet position
                         resetLatches[i] = true;
@@ -295,6 +323,25 @@ void SplitFlapDisplay::moveTo(int targetPositions[], float speed, bool releaseMo
     if (releaseMotors) {
         delay(startStopDelay); // allow all motors time to settle
         stopMotors();
+    }
+}
+
+// Maybe not needed now that we output magnet state to mqtt
+void SplitFlapDisplay::checkMagnets() {
+    home();
+    Serial.print("Magnets Detected: ");
+    for (int i = 0; i < numModules; i++) {
+        if (modules[i].getHasMagnetDetected()) {
+            Serial.print(i);
+            Serial.print(", ");
+        };
+    }
+    Serial.println("");
+}
+
+void SplitFlapDisplay::readMagnets() {
+    for (int i = 0; i < numModules; i++) {
+        modules[i].readHallEffectSensor();
     }
 }
 

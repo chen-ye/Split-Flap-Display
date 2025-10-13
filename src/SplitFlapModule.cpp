@@ -165,10 +165,19 @@ bool SplitFlapModule::readHallEffectSensor() {
         uint16_t inputState = 0;
 
         // Read the two bytes and combine them into a 16-bit value
-        inputState = Wire.read();             // Read the lower byte
-        inputState |= (Wire.read() << 8);     // Read the upper byte and shift it left
+        inputState = Wire.read();                   // Read the lower byte
+        inputState |= (Wire.read() << 8);           // Read the upper byte and shift it left
 
-        return (inputState & (1 << 15)) != 0; // If bit is 15, return HIGH, else LOW
+        bool state = (inputState & (1 << 15)) == 0; // If bit is 15, return false, else true
+        if (state) {
+            if (! hasMagnetDetected) {
+                Serial.print("Magnet Detected: ");
+                Serial.println(address);
+            }
+            hasMagnetDetected = true;
+        }
+        return ! state;
     }
+    Serial.println("Sensor not Available");
     return false;
 }

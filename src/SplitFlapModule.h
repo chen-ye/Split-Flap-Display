@@ -31,6 +31,7 @@ class SplitFlapModule {
     } // update position to magnetposition, called when magnet is detected
 
     bool getHasErrored() const { return hasErrored; }
+    bool getHasMagnetDetected() const { return hasMagnetDetected; }
 
   private:
     uint8_t address;                // i2c address of module
@@ -41,6 +42,7 @@ class SplitFlapModule {
 
     void writeIO(uint16_t data);    // write to motor in pins
 
+    bool hasMagnetDetected = false;
     int magnetPosition;             // altered by offsets
     static const int motorPins[];   // Array of motor pins
     static const int HallEffectPIN; // Hall Effect Sensor Pin (On PCF8575)
