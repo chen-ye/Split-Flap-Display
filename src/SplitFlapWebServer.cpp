@@ -13,10 +13,6 @@
 #define WIFI_PASS ""
 #endif
 
-#ifndef WIFI_TX_POWER
-#define WIFI_TX_POWER WIFI_POWER_8_5dBm
-#endif
-
 SplitFlapWebServer::SplitFlapWebServer(JsonSettings &settings)
     : settings(settings), server(80), multiWordDelay(1000), rebootRequired(false), attemptReconnect(false),
       multiWordCurrentIndex(0), numMultiWords(0), wifiCheckInterval(1000), connectionMode(0), checkDateInterval(250),
@@ -159,6 +155,7 @@ void SplitFlapWebServer::checkWiFi() {
     if (connectionMode == 1) {
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("Wi-Fi lost! Forcing reconnect...");
+
             WiFi.disconnect();
             WiFi.reconnect();
         }
@@ -167,19 +164,10 @@ void SplitFlapWebServer::checkWiFi() {
 
 bool SplitFlapWebServer::loadWiFiCredentials() {
     // Allow WIFI_SSID and WIFI_PASS to be overridden by compile-time definitions
-    String ssid = String(WIFI_SSID).isEmpty() ? settings.getString("ssid") : String(WIFI_SSID);
-    String password = String(WIFI_PASS).isEmpty() ? settings.getString("password") : String(WIFI_PASS);
+    this->ssid = String(WIFI_SSID).isEmpty() ? settings.getString("ssid") : String(WIFI_SSID);
+    this->pass = String(WIFI_PASS).isEmpty() ? settings.getString("password") : String(WIFI_PASS);
 
-    if (ssid != "" && password != "") {
-        Serial.println("Wi-Fi credentials loaded successfully.");
-        Serial.print("Connecting to Network: ");
-        Serial.println(ssid);
-        WiFi.mode(WIFI_STA);
-#ifdef WIFI_TX_POWER
-        delay(100);
-        WiFi.setTxPower((wifi_power_t) WIFI_TX_POWER);
-#endif
-        WiFi.begin(ssid.c_str(), password.c_str());
+    if (this->ssid != "" && this->pass != "") {
         return true; // Return true if credentials exist
     }
     return false;    // Return false if no credentials were found
@@ -244,35 +232,64 @@ void SplitFlapWebServer::enableOta() {
 
 bool SplitFlapWebServer::connectToWifi() {
     if (loadWiFiCredentials()) {
-        unsigned long startAttemptTime = millis();
-        const unsigned long timeout = 30000; // 30 seconds
-        unsigned long lastPrintTime = startAttemptTime;
+#ifdef WIFI_TX_POWER
+        wifi_power_t powers_to_try[] = {WIFI_TX_POWER};
+#else
+        wifi_power_t powers_to_try[] = {WIFI_POWER_11dBm, WIFI_POWER_8_5dBm, WIFI_POWER_7dBm, WIFI_POWER_5dBm};
+#endif
+        auto powers_to_try_length = sizeof(powers_to_try) / sizeof(powers_to_try[0]);
 
-        while (WiFi.status() != WL_CONNECTED) {
-            if (millis() - startAttemptTime >= timeout) {
-                Serial.println("_");
-                Serial.println("Wi-Fi connection failed! Timeout reached.");
-                return false; // Return false if unable to connect in 30 seconds
+        // For each power to try, attempt a wifi connection
+        for (int i = 0; i < powers_to_try_length; i++) {
+            auto power_to_try = powers_to_try[i];
+
+            Serial.println("Wi-Fi credentials loaded successfully.");
+            Serial.print("Connecting to Network: ");
+            Serial.println(this->ssid);
+            WiFi.mode(WIFI_STA);
+
+            if (this->connectToWifiWithPower(power_to_try)) {
+                // connected succesfully
+                connectionMode = 1;
+                WiFi.softAPdisconnect(); // Turns off SoftAP mode only after connected to
+                // actual network
+                WiFi.setAutoReconnect(true);
+                WiFi.persistent(true); // Saves Wi-Fi settings to flash memory
+                WiFi.setSleep(false);
+                Serial.println("Connected to Wi-Fi!");
+                Serial.println("IP Address: http://" + WiFi.localIP().toString());
+                return true;
             }
-            if ((millis() - lastPrintTime) > 1000) {
-                Serial.print(".");
-                lastPrintTime = millis();
-            }
-            yield();
         }
-
-        // connected succesfully
-        connectionMode = 1;
-        WiFi.softAPdisconnect(); // Turns off SoftAP mode only after connected to
-        // actual network
-        WiFi.setAutoReconnect(true);
-        WiFi.persistent(true); // Saves Wi-Fi settings to flash memory
-        WiFi.setSleep(false);
-        Serial.println("Connected to Wi-Fi!");
-        Serial.println("IP Address: http://" + WiFi.localIP().toString());
-        return true;
+        return false;
     }
     return false;
+}
+
+bool SplitFlapWebServer::connectToWifiWithPower(wifi_power_t power) {
+    Serial.print("Power: ");
+    Serial.println(power);
+
+    unsigned long startAttemptTime = millis();
+    const unsigned long timeout = 30000; // 30 seconds
+    unsigned long lastPrintTime = startAttemptTime;
+
+    WiFi.setTxPower(power);
+    WiFi.begin(this->ssid.c_str(), this->pass.c_str());
+
+    while (WiFi.status() != WL_CONNECTED) {
+        if (millis() - startAttemptTime >= timeout) {
+            Serial.println("_");
+            Serial.println("Wi-Fi connection failed! Timeout reached.");
+            return false; // Return false if unable to connect in `timeout` time
+        }
+        if ((millis() - lastPrintTime) > 1000) {
+            Serial.print(".");
+            lastPrintTime = millis();
+        }
+        yield();
+    }
+    return true;
 }
 
 void SplitFlapWebServer::startAccessPoint() {

@@ -77,7 +77,12 @@ class SplitFlapWebServer {
   private:
     JsonSettings &settings;
 
+    String ssid;
+    String pass;
+
     String decodeURIComponent(String encodedString);
+
+    bool connectToWifiWithPower(wifi_power_t power);
     void setInputString(String input) { inputString = input; }
     void setMultiInputString(String input) { multiInputString = input; }
 
