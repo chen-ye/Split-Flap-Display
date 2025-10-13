@@ -33,14 +33,14 @@
                 class="w-full p-3 mb-6 text-lg border border-neutral-600 rounded-md text-center bg-neutral-700 text-white"
                 x-model.number="settings.mode"
             >
-                <option value="2">Date</option>
-                <option value="3">Time</option>
+                <option value="date">Date</option>
+                <option value="time">Time</option>
                 <!--        <option value="4">Count</option>-->
-                <option value="6">Custom Text</option>
-                <option value="5">Random</option>
+                <option value="text">Custom Text</option>
+                <option value="random">Random</option>
             </select>
 
-            <template x-if="settings.mode == 6">
+            <template x-if="settings.mode == 'text'">
                 <div class="w-full">
                     <div class="flex items-center justify-between gap-4 mb-4">
                         <div class="flex items-center gap-4">
@@ -166,6 +166,13 @@
                 x-on:click="() => setTimeout(() => updateDisplay(), 0)"
             >
                 Update Display
+            </button>
+
+            <button
+                class="p-3 mt-4 text-lg font-semibold text-white hover:text-amber-600 text-center block transition-colors"
+                x-on:click="() => setTimeout(() => homeDisplay(), 0)"
+            >
+                Home Display
             </button>
 
             <a

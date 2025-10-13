@@ -18,7 +18,7 @@ document.addEventListener("alpine:init", () => {
             type: null,
         },
         settings: {
-            mode: 2,
+            mode: DisplayMode.Date,
             dateFormat: "ddd dd/MM",
             timeFormat: "HH:mm",
         },
@@ -102,7 +102,7 @@ document.addEventListener("alpine:init", () => {
         },
 
         updateDisplay() {
-            if (this.settings.mode === 6) {
+            if (this.settings.mode === "text") {
                 if (this.delay < 1) {
                     return this.showDialog(
                         "Delay must be at least 1 second.",
@@ -125,13 +125,7 @@ document.addEventListener("alpine:init", () => {
                 }
             }
 
-            fetch("/settings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mode: this.settings.mode }),
-            });
-
-            if (this.settings.mode === 6) {
+            if (this.settings.mode === "text") {
                 fetch("/text", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -148,8 +142,22 @@ document.addEventListener("alpine:init", () => {
                     .then((res) => this.showDialog(res.message, res.type))
                     .catch((err) => this.showDialog(err.message, "error"));
             } else {
+                fetch("/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ mode: this.settings.mode }),
+                });
                 this.showDialog("Mode updated successfully.", "success");
             }
+        },
+
+        homeDisplay() {
+            fetch("/home", {
+                method: "POST",
+            })
+                .then((res) => res.json())
+                .then((res) => this.showDialog(res.message, res.type))
+                .catch((err) => this.showDialog(err.message, "error"));
         },
 
         addWord() {
