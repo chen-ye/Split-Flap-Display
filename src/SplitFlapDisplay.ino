@@ -63,6 +63,8 @@ void setup() {
     delay(STARTUP_DELAY);
 #endif
 
+    display.init();
+
     Serial.println("Init Web Server");
     webServer.init();
 
@@ -78,7 +80,6 @@ void setup() {
 
     // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 1); // enable brownout detector
 
-    display.init();
     display.checkMagnets();
 
     if (wifiConnected) {
