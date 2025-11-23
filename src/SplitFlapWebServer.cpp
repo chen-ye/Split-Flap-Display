@@ -13,10 +13,18 @@
 #define WIFI_PASS ""
 #endif
 
+#ifdef WIFI_TX_POWER
+static const wifi_power_t powers_to_try[] = {WIFI_TX_POWER};
+#else
+static const wifi_power_t powers_to_try[] = {WIFI_POWER_11dBm, WIFI_POWER_8_5dBm, WIFI_POWER_7dBm, WIFI_POWER_5dBm};
+#endif
+static const int powers_to_try_count = sizeof(powers_to_try) / sizeof(powers_to_try[0]);
+
+
 SplitFlapWebServer::SplitFlapWebServer(JsonSettings &settings)
     : settings(settings), server(80), multiWordDelay(1000), rebootRequired(false), attemptReconnect(false),
       multiWordCurrentIndex(0), numMultiWords(0), wifiCheckInterval(1000), connectionMode(0), checkDateInterval(250),
-      centering(1) {
+      centering(1), wifiState(WiFiState::CONNECTING), currentPowerIndex(0), lastConnectedTime(0), disconnectTime(0) {
     lastSwitchMultiTime = millis();
 }
 
@@ -151,15 +159,90 @@ DisplayMode SplitFlapWebServer::getMode() {
     return static_cast<DisplayMode>(settings.getInt("mode"));
 }
 
-void SplitFlapWebServer::checkWiFi() {
-    if (connectionMode == 1) {
-        if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("Wi-Fi lost! Forcing reconnect...");
+void SplitFlapWebServer::loop() {
+    switch (wifiState) {
+        case WiFiState::CONNECTING:
+            if (WiFi.status() == WL_CONNECTED) {
+                wifiState = WiFiState::CONNECTED;
+                if (onStateChange) onStateChange(wifiState);
+                connectionMode = 1;
+                WiFi.softAPdisconnect(true);
+                WiFi.setAutoReconnect(true);
+                WiFi.persistent(true);
+                Serial.println("Connected to Wi-Fi!");
+                Serial.println("IP Address: http://" + WiFi.localIP().toString());
 
-            WiFi.disconnect();
-            WiFi.reconnect();
-        }
+                // Re-enable services if needed
+                enableOta();
+                endMDNS();
+                startMDNS();
+            } else if (millis() - wifiConnectStartTime > WIFI_CONNECT_TIMEOUT) {
+                Serial.println("Wi-Fi connection attempt failed.");
+                currentPowerIndex++;
+
+                if (currentPowerIndex >= powers_to_try_count) {
+                    Serial.println("All power levels failed. Switching to AP Mode.");
+                    currentPowerIndex = 0;
+                    wifiState = WiFiState::AP_MODE;
+                    if (onStateChange) onStateChange(wifiState);
+                    startAccessPoint();
+                    apStartTime = millis();
+                } else {
+                    Serial.println("Retrying with next power level...");
+                    connectToWifi();
+                }
+            }
+            break;
+
+        case WiFiState::CONNECTED:
+            if (WiFi.status() == WL_CONNECTED) {
+                lastConnectedTime = millis();
+            } else if (millis() - lastConnectedTime > 5000) { // Debounce disconnection for 5 seconds
+                Serial.println("Wi-Fi lost! Reconnecting...");
+                wifiState = WiFiState::DISCONNECTED;
+                disconnectTime = millis();
+                if (onStateChange) onStateChange(wifiState);
+            }
+            break;
+
+        case WiFiState::DISCONNECTED:
+            if (millis() - disconnectTime > 2000) { // Show "WIFI DSC" for 2 seconds
+                wifiState = WiFiState::CONNECTING;
+                if (onStateChange) onStateChange(wifiState);
+                currentPowerIndex = 0;
+                connectToWifi();
+            }
+            break;
+
+        case WiFiState::AP_MODE:
+            if (WiFi.softAPgetStationNum() > 0) {
+                // Client connected, suspend timeout
+                apStartTime = millis();
+            }
+
+            if (millis() - apStartTime > AP_MODE_DURATION) {
+                Serial.println("AP Mode timeout. Retrying Wi-Fi connection...");
+                wifiState = WiFiState::CONNECTING;
+                if (onStateChange) onStateChange(wifiState);
+                WiFi.softAPdisconnect(true);
+                connectToWifi();
+            }
+            break;
     }
+}
+
+void SplitFlapWebServer::setWifiState(int state) {
+    // Helper to force state if needed
+    // 0: CONNECTING, 1: CONNECTED, 2: AP_MODE
+    if (state == 0) wifiState = WiFiState::CONNECTING;
+    else if (state == 1) wifiState = WiFiState::CONNECTED;
+    else if (state == 2) wifiState = WiFiState::AP_MODE;
+    else if (state == 3) wifiState = WiFiState::DISCONNECTED;
+    if (onStateChange) onStateChange(wifiState);
+}
+
+void SplitFlapWebServer::checkWiFi() {
+    // Deprecated/Handled in loop(), keeping empty for compatibility if called elsewhere
 }
 
 bool SplitFlapWebServer::loadWiFiCredentials() {
@@ -232,64 +315,41 @@ void SplitFlapWebServer::enableOta() {
 
 bool SplitFlapWebServer::connectToWifi() {
     if (loadWiFiCredentials()) {
-#ifdef WIFI_TX_POWER
-        wifi_power_t powers_to_try[] = {WIFI_TX_POWER};
-#else
-        wifi_power_t powers_to_try[] = {WIFI_POWER_11dBm, WIFI_POWER_8_5dBm, WIFI_POWER_7dBm, WIFI_POWER_5dBm};
-#endif
-        auto powers_to_try_length = sizeof(powers_to_try) / sizeof(powers_to_try[0]);
-
-        // For each power to try, attempt a wifi connection
-        for (int i = 0; i < powers_to_try_length; i++) {
-            auto power_to_try = powers_to_try[i];
-
-            Serial.println("Wi-Fi credentials loaded successfully.");
-            Serial.print("Connecting to Network: ");
-            Serial.println(this->ssid);
-            WiFi.mode(WIFI_STA);
-
-            if (this->connectToWifiWithPower(power_to_try)) {
-                // connected succesfully
-                connectionMode = 1;
-                WiFi.softAPdisconnect(); // Turns off SoftAP mode only after connected to
-                // actual network
-                WiFi.setAutoReconnect(true);
-                WiFi.persistent(true); // Saves Wi-Fi settings to flash memory
-                WiFi.setSleep(false);
-                Serial.println("Connected to Wi-Fi!");
-                Serial.println("IP Address: http://" + WiFi.localIP().toString());
-                return true;
-            }
+        if (currentPowerIndex >= powers_to_try_count) {
+            currentPowerIndex = 0;
         }
-        return false;
+
+        wifi_power_t power_to_try = powers_to_try[currentPowerIndex];
+
+        Serial.println("Wi-Fi credentials loaded.");
+        Serial.print("Connecting to Network: ");
+        Serial.println(this->ssid);
+        Serial.print("Power Level Index: ");
+        Serial.println(currentPowerIndex);
+
+        WiFi.mode(WIFI_STA);
+        WiFi.setTxPower(power_to_try);
+        WiFi.begin(this->ssid.c_str(), this->pass.c_str());
+
+        wifiConnectStartTime = millis();
+        return true; // Started
     }
+
+    Serial.println("No WiFi credentials found. Starting AP Mode.");
+    wifiState = WiFiState::AP_MODE;
+    if (onStateChange) onStateChange(wifiState);
+    startAccessPoint();
+    apStartTime = millis();
     return false;
 }
 
+// connectToWifiWithPower is no longer used in the same way,
+// but we can keep it or remove it. The logic is now inside loop/connectToWifi.
+// For now, I'll remove the definition or comment it out if it's private.
+// It was private. I will remove it.
 bool SplitFlapWebServer::connectToWifiWithPower(wifi_power_t power) {
-    Serial.print("Power: ");
-    Serial.println(power);
-
-    unsigned long startAttemptTime = millis();
-    const unsigned long timeout = 30000; // 30 seconds
-    unsigned long lastPrintTime = startAttemptTime;
-
-    WiFi.setTxPower(power);
-    WiFi.begin(this->ssid.c_str(), this->pass.c_str());
-
-    while (WiFi.status() != WL_CONNECTED) {
-        if (millis() - startAttemptTime >= timeout) {
-            Serial.println("_");
-            Serial.println("Wi-Fi connection failed! Timeout reached.");
-            return false; // Return false if unable to connect in `timeout` time
-        }
-        if ((millis() - lastPrintTime) > 1000) {
-            Serial.print(".");
-            lastPrintTime = millis();
-        }
-        yield();
-    }
-    return true;
+    // Unused
+    return false;
 }
 
 void SplitFlapWebServer::startAccessPoint() {

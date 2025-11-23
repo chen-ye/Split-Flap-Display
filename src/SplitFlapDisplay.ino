@@ -68,11 +68,34 @@ void setup() {
     Serial.println("Init Web Server");
     webServer.init();
 
-    bool wifiConnected = webServer.connectToWifi();
+    // Start WiFi connection process (non-blocking)
+    webServer.setOnStateChange([](SplitFlapWebServer::WiFiState state) {
+        switch (state) {
+            case SplitFlapWebServer::WiFiState::CONNECTING:
+                display.writeString("WIFI CON");
+                break;
+            case SplitFlapWebServer::WiFiState::AP_MODE:
+                display.writeString("WIFI ERR");
+                break;
+            case SplitFlapWebServer::WiFiState::CONNECTED:
+                display.writeString("Hello");
+                delay(2000);
+                display.writeString("Alex");
+                delay(2000);
+                display.writeString("");
+                break;
+            case SplitFlapWebServer::WiFiState::DISCONNECTED:
+                display.writeString("WIFI DSC");
+                break;
+        }
+    });
 
-    if (! wifiConnected) {
-        webServer.startAccessPoint();
-    }
+    // Check (and home) magnets. This should be done before display is used.
+    display.checkMagnets();
+
+    webServer.connectToWifi();
+    // Trigger initial state display
+    display.writeString("WIFI CON");
 
     webServer.enableOta();
     webServer.startMDNS();
@@ -80,23 +103,11 @@ void setup() {
 
     // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 1); // enable brownout detector
 
-    display.checkMagnets();
 
-    if (wifiConnected) {
-        splitflapMqtt.setup();
-        splitflapMqtt.setDisplay(&display);
-        display.setMqtt(&splitflapMqtt);
-        display.writeString("Hello");
-        display.writeString("Alex");
-        delay(2500);
-        display.writeString("");
-    } else {
-        if (display.getNumModules() == 8) {
-            display.writeString("Wifi Err");
-        } else {
-            display.writeChar('X');
-        }
-    }
+    // Always setup MQTT, it will connect when WiFi is ready
+    splitflapMqtt.setup();
+    splitflapMqtt.setDisplay(&display);
+    display.setMqtt(&splitflapMqtt);
 }
 
 void loop() {
@@ -115,9 +126,9 @@ void loop() {
     }
 
     webServer.handleOta();
-    checkConnection();
-
-    reconnectIfNeeded();
+    webServer.loop(); // Handle WiFi state machine
+    // checkConnection(); // Removed, handled in webServer.loop()
+    // reconnectIfNeeded(); // Removed, handled in webServer.loop()
 
     webServer.checkRebootRequired();
 
@@ -186,38 +197,9 @@ void randomTest() {
     delay(2500);
 }
 
-void checkConnection() {
-    if (millis() - webServer.getLastCheckWifiTime() >
-        webServer.getWifiCheckInterval()) { // check wifi to see if disconnected
-        webServer.checkWiFi();
-        webServer.setLastCheckWifiTime(millis());
-    }
-}
+// checkConnection removed
 
-void reconnectIfNeeded() {
-    if (webServer.getAttemptReconnect()) { // check if the device should attempt reconnection to wifi
-        webServer.setAttemptReconnect(false);
-        display.writeString("");
-        if (! webServer.connectToWifi()) {
-            webServer.startAccessPoint();
-            webServer.enableOta();
-            webServer.endMDNS();
-            webServer.startMDNS();
-            display.writeChar('X');
-        } else {
-            webServer.enableOta();
-            webServer.endMDNS();
-            webServer.startMDNS();
-            display.writeString("OK");
-            webServer.setWrittenString("OK");
-            delay(500);
-            display.writeString("");
-            webServer.setWrittenString("");
-        }
-
-        splitflapMqtt.setup();
-    }
-}
+// reconnectIfNeeded removed
 
 String extractFromCSV(String str, int index) {
     int startIndex = 0;

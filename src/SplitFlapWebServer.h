@@ -10,6 +10,7 @@
 #include <LittleFS.h>
 #include <WiFi.h>
 #include <time.h>
+#include <functional>
 
 enum class DisplayMode : int {
     SingleInput = 0,
@@ -71,10 +72,24 @@ class SplitFlapWebServer {
     unsigned long getLastCheckDateTime() { return lastCheckDateTime; }
     void setLastCheckDateTime(unsigned long input) { lastCheckDateTime = input; }
     int getDateCheckInterval() { return checkDateInterval; }
-
     int getCentering() { return centering; }
 
+    void loop();
+    void setWifiState(int state);
+
+    // WiFi State Machine
+    enum class WiFiState {
+        CONNECTING,
+        CONNECTED,
+        AP_MODE,
+        DISCONNECTED
+    };
+
+    using StateChangeCallback = std::function<void(WiFiState)>;
+    void setOnStateChange(StateChangeCallback callback) { onStateChange = callback; }
+
   private:
+    StateChangeCallback onStateChange;
     JsonSettings &settings;
 
     String ssid;
@@ -109,4 +124,13 @@ class SplitFlapWebServer {
     unsigned long lastCheckWifiTime;
     int wifiCheckInterval;
     AsyncWebServer server; // Declare server as a class member
+
+    WiFiState wifiState;
+    unsigned long apStartTime;
+    const unsigned long AP_MODE_DURATION = 4 * 60 * 1000; // 4 minutes
+    const unsigned long WIFI_CONNECT_TIMEOUT = 30000; // 30 seconds
+    unsigned long wifiConnectStartTime;
+    int currentPowerIndex = 0;
+    unsigned long lastConnectedTime;
+    unsigned long disconnectTime;
 };
