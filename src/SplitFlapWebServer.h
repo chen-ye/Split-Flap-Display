@@ -127,7 +127,7 @@ class SplitFlapWebServer {
 
     WiFiState wifiState;
     unsigned long apStartTime;
-    const unsigned long AP_MODE_DURATION = 4 * 60 * 1000; // 4 minutes
+    const unsigned long AP_MODE_DURATION = 1 * 60 * 1000; // 1 minute
     const unsigned long WIFI_CONNECT_TIMEOUT = 30000; // 30 seconds
     unsigned long wifiConnectStartTime;
     int currentPowerIndex = 0;
