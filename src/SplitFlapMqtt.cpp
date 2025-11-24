@@ -18,6 +18,7 @@ void SplitFlapMqtt::setup() {
     topic_avail = "splitflap/" + mdns + "/availability";
     topic_config_text = "homeassistant/text/splitflap_text_" + mdns + "/config";
     topic_config_sensor = "homeassistant/sensor/splitflap_sensor_" + mdns + "/config";
+    topic_heartbeat = "splitflap/" + mdns + "/heartbeat";
 
     mqttClient.setServer(mqttServer.c_str(), mqttPort);
     mqttClient.setCallback([this](char *topic, byte *payload, unsigned int length) {
@@ -87,6 +88,10 @@ void SplitFlapMqtt::connectToMqtt() {
 
             mqttClient.publish(topic_config_text.c_str(), payload_text.c_str(), true);
             mqttClient.publish(topic_config_sensor.c_str(), payload_sensor.c_str(), true);
+
+            // Initial heartbeat
+            mqttClient.publish(topic_heartbeat.c_str(), "online", true);
+            lastHeartbeat = millis();
         } else {
             Serial.println("[MQTT] Failed to connect");
         }
@@ -109,6 +114,14 @@ void SplitFlapMqtt::publishMagnets(const String &magnetState) {
 
 void SplitFlapMqtt::loop() {
     mqttClient.loop();
+
+    if (mqttClient.connected()) {
+        unsigned long now = millis();
+        if (now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+            lastHeartbeat = now;
+            mqttClient.publish(topic_heartbeat.c_str(), "online", true);
+        }
+    }
 }
 
 bool SplitFlapMqtt::isConnected() {

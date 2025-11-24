@@ -37,7 +37,10 @@ class SplitFlapMqtt {
     String topic_avail;
     String topic_config_text;
     String topic_config_sensor;
+    String topic_heartbeat;
 
     unsigned long lastAttempt = 0;
+    unsigned long lastHeartbeat = 0;
+    const unsigned long HEARTBEAT_INTERVAL = 30000; // 30 seconds
     int retryCount = 0;
 };
