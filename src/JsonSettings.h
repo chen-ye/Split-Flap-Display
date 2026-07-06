@@ -22,7 +22,7 @@ class JsonSettings {
     void putIntVector(const char *key, std::vector<int> value);
 
     JsonDocument toJson();
-    bool fromJson(JsonDocument settings);
+    bool fromJson(JsonVariant settings);
     bool reset();
 
     String getLastValidationError() { return lastValidationError; }

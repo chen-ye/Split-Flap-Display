@@ -58,7 +58,7 @@ void SplitFlapDisplay::testAll() {
     char testChars[37] = {' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
                           'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
     int numChars = sizeof(testChars) / sizeof(testChars[0]);
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
 
     int charPos;
     for (int i = 0; i < numChars; i++) {
@@ -81,7 +81,7 @@ void SplitFlapDisplay::testRandom(float speed) {
     char testChars[37] = {' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
                           'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     char randChar;
 
     Serial.print("Target: ");
@@ -100,7 +100,7 @@ void SplitFlapDisplay::testCount() {
     char targetChar;
     int targetInteger;
 
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
 
     for (int i = 0; i < maxCount; i++) {
         // get each character in the count integer
@@ -117,7 +117,7 @@ void SplitFlapDisplay::testCount() {
 
 void SplitFlapDisplay::home(float speed) {
     Serial.println("Homing");
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = (modules[i].getPosition() - 1 + stepsPerRot) % stepsPerRot;
     }
@@ -134,7 +134,7 @@ void SplitFlapDisplay::home(float speed) {
 void SplitFlapDisplay::homeToString(String homeString, float speed, bool centering) {
     Serial.println("Homing to String:");
     Serial.println(homeString);
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = (modules[i].getPosition() - 1 + stepsPerRot) % stepsPerRot;
     }
@@ -146,7 +146,7 @@ void SplitFlapDisplay::homeToString(String homeString, float speed, bool centeri
 void SplitFlapDisplay::homeToChar(char homeChar, float speed) {
     Serial.println("Homing to Char:");
     Serial.println(homeChar);
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = (modules[i].getPosition() - 1 + stepsPerRot) % stepsPerRot;
     }
@@ -156,11 +156,11 @@ void SplitFlapDisplay::homeToChar(char homeChar, float speed) {
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = modules[i].getCharPosition(homeChar);
     }
-    moveTo(targetPositions, true, speed);
+    moveTo(targetPositions, speed, true);
 }
 
 void SplitFlapDisplay::writeChar(char inputChar, float speed) {
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     // Iterate through the input string and process each character
     for (int i = 0; i < numModules; i++) {
         targetPositions[i] = modules[i].getCharPosition(inputChar);
@@ -198,7 +198,7 @@ void SplitFlapDisplay::writeString(String inputString, float speed, bool centeri
         }
     }
 
-    int targetPositions[numModules];
+    int targetPositions[MAX_MODULES];
     // Iterate through the input string and process each character
     for (int i = 0; i < displayString.length(); i++) {
         char currentChar = displayString[i];
@@ -206,7 +206,7 @@ void SplitFlapDisplay::writeString(String inputString, float speed, bool centeri
     }
     moveTo(targetPositions, speed);
 
-    bool hasMagnetDetected[numModules] = {};
+    bool hasMagnetDetected[MAX_MODULES] = {};
     for (int i = 0; i < numModules; i++) {
         hasMagnetDetected[i] = modules[i].getHasMagnetDetected();
     }
@@ -240,10 +240,10 @@ void SplitFlapDisplay::moveTo(int targetPositions[], float speed, bool releaseMo
     int startStopDelay = 200; // time to wait to let motor realign itself to
     // magnetic field on stop and start
 
-    bool resetLatches[numModules] = {}; // Initialize to false //start with latch on to prevent case where the
+    bool resetLatches[MAX_MODULES] = {}; // Initialize to false //start with latch on to prevent case where the
     // motion starts with the magnet over the sensor
-    bool needsStepping[numModules] = {};             // Initialize to false; //modules that still require moving
-    unsigned long lastStepTimes[numModules] = {};    // Initialize to false; //track when each module was last stepped
+    bool needsStepping[MAX_MODULES] = {};             // Initialize to false; //modules that still require moving
+    unsigned long lastStepTimes[MAX_MODULES] = {};    // Initialize to false; //track when each module was last stepped
     unsigned long lastSensorCheckTime = currentTime; // track when we last read all the hall effect sensors
 
     for (int i = 0; i < numModules; i++) {

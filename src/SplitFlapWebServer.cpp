@@ -246,14 +246,19 @@ void SplitFlapWebServer::checkWiFi() {
 }
 
 bool SplitFlapWebServer::loadWiFiCredentials() {
+#ifdef WOKWI_SIM
+    this->ssid = "Wokwi-GUEST";
+    this->pass = "";
+#else
     // Allow WIFI_SSID and WIFI_PASS to be overridden by compile-time definitions
     this->ssid = String(WIFI_SSID).isEmpty() ? settings.getString("ssid") : String(WIFI_SSID);
     this->pass = String(WIFI_PASS).isEmpty() ? settings.getString("password") : String(WIFI_PASS);
+#endif
 
-    if (this->ssid != "" && this->pass != "") {
-        return true; // Return true if credentials exist
+    if (this->ssid != "") {
+        return true; // Return true if SSID is set (password optional for open networks)
     }
-    return false;    // Return false if no credentials were found
+    return false;    // Return false if no SSID was found
 }
 
 void SplitFlapWebServer::checkRebootRequired() {
@@ -363,6 +368,10 @@ void SplitFlapWebServer::startAccessPoint() {
     Serial.println("AP Mode Started!");
     Serial.println("Connect to: " + String(apSSID));
     Serial.println("AP IP Address: http://" + WiFi.softAPIP().toString());
+
+    enableOta();
+    endMDNS();
+    startMDNS();
 }
 
 void fourOhFour(AsyncWebServerRequest *request) {

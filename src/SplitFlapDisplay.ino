@@ -97,8 +97,6 @@ void setup() {
     // Trigger initial state display
     display.writeString("WIFI CON");
 
-    webServer.enableOta();
-    webServer.startMDNS();
     webServer.startWebServer();
 
     // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 1); // enable brownout detector

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "author": "Chen Ye",
+  "editor": "wokwi",
+  "serialMonitor": {
+    "collapse": false,
+    "convertEol": false,
+    "display": "always",
+    "newline": "lf"
+  },
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": -150, "left": 0, "attrs": { "serialInterface": "USB_SERIAL_JTAG" } },
+    
+    { "type": "chip-pcf8575", "id": "pcf0", "top": 100, "left": -450, "attrs": { "address": "32", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf1", "top": 100, "left": -320, "attrs": { "address": "33", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf2", "top": 100, "left": -190, "attrs": { "address": "34", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf3", "top": 100, "left": -60, "attrs": { "address": "35", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf4", "top": 100, "left": 70, "attrs": { "address": "36", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf5", "top": 100, "left": 200, "attrs": { "address": "37", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf6", "top": 100, "left": 330, "attrs": { "address": "38", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } },
+    { "type": "chip-pcf8575", "id": "pcf7", "top": 100, "left": 460, "attrs": { "address": "39", "magnet_position": "730", "steps_per_rot": "2048", "charset": "48" } }
+    
+  ],
+  "connections": [
+    [ "esp:GND.1", "pcf0:GND", "black", [ "h0" ] ],
+    [ "esp:3V3", "pcf0:VCC", "red", [ "h0" ] ],
+    [ "esp:8", "pcf0:SDA", "blue", [ "h0" ] ],
+    [ "esp:9", "pcf0:SCL", "yellow", [ "h0" ] ],
+
+    [ "pcf0:GND", "pcf1:GND", "black", [] ],
+    [ "pcf0:VCC", "pcf1:VCC", "red", [] ],
+    [ "pcf0:SDA", "pcf1:SDA", "blue", [] ],
+    [ "pcf0:SCL", "pcf1:SCL", "yellow", [] ],
+
+    [ "pcf1:GND", "pcf2:GND", "black", [] ],
+    [ "pcf1:VCC", "pcf2:VCC", "red", [] ],
+    [ "pcf1:SDA", "pcf2:SDA", "blue", [] ],
+    [ "pcf1:SCL", "pcf2:SCL", "yellow", [] ],
+
+    [ "pcf2:GND", "pcf3:GND", "black", [] ],
+    [ "pcf2:VCC", "pcf3:VCC", "red", [] ],
+    [ "pcf2:SDA", "pcf3:SDA", "blue", [] ],
+    [ "pcf2:SCL", "pcf3:SCL", "yellow", [] ],
+
+    [ "pcf3:GND", "pcf4:GND", "black", [] ],
+    [ "pcf3:VCC", "pcf4:VCC", "red", [] ],
+    [ "pcf3:SDA", "pcf4:SDA", "blue", [] ],
+    [ "pcf3:SCL", "pcf4:SCL", "yellow", [] ],
+
+    [ "pcf4:GND", "pcf5:GND", "black", [] ],
+    [ "pcf4:VCC", "pcf5:VCC", "red", [] ],
+    [ "pcf4:SDA", "pcf5:SDA", "blue", [] ],
+    [ "pcf4:SCL", "pcf5:SCL", "yellow", [] ],
+
+    [ "pcf5:GND", "pcf6:GND", "black", [] ],
+    [ "pcf5:VCC", "pcf6:VCC", "red", [] ],
+    [ "pcf5:SDA", "pcf6:SDA", "blue", [] ],
+    [ "pcf5:SCL", "pcf6:SCL", "yellow", [] ],
+
+    [ "pcf6:GND", "pcf7:GND", "black", [] ],
+    [ "pcf6:VCC", "pcf7:VCC", "red", [] ],
+    [ "pcf6:SDA", "pcf7:SDA", "blue", [] ],
+    [ "pcf6:SCL", "pcf7:SCL", "yellow", [] ]
+  ]
+}

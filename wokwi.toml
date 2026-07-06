@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+firmware = '.pio/build/esp32_c3_sim/firmware.bin'
+elf = '.pio/build/esp32_c3_sim/firmware.elf'
+rfc2217ServerPort = 4000
+
+[[chip]]
+name = 'pcf8575'
+binary = 'wokwi/pcf8575.chip.wasm'

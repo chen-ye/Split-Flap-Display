@@ -106,7 +106,7 @@ JsonDocument JsonSettings::toJson() {
     return settings;
 }
 
-bool JsonSettings::fromJson(JsonDocument settings) {
+bool JsonSettings::fromJson(JsonVariant settings) {
     safePreferencesBegin(preferences, name, false);
 
     for (JsonPair kv : settings.as<JsonObject>()) {
