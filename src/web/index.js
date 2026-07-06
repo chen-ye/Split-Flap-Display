@@ -9,8 +9,8 @@ const DisplayMode = {
     Time: 3,
     Mqtt: 4,
     RandomTest: 5,
-    CheckMagnets: 6
-}
+    CheckMagnets: 6,
+};
 
 document.addEventListener("alpine:init", () => {
     Alpine.data("page", (type) => ({

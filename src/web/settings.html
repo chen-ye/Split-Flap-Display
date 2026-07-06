@@ -541,18 +541,18 @@
                             x-model="settings.custom_charset"
                             class="w-full p-3 pr-16 text-lg border rounded-md text-center bg-neutral-700 text-gray-100"
                             :class="{
-                'border-red-600': settings.custom_charset.length !== settings.charset,
-                'border-green-500': settings.custom_charset.length === settings.charset
+                'border-red-600': settings.custom_charset?.length !== settings.charset,
+                'border-green-500': settings.custom_charset?.length === settings.charset
             }"
                             placeholder=" ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789':?!.-/@$#%"
                         />
                         <span
                             class="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm"
                             :class="{
-                'text-red-600': settings.custom_charset.length !== settings.charset,
-                'text-green-500': settings.custom_charset.length === settings.charset
+                'text-red-600': settings.custom_charset?.length !== settings.charset,
+                'text-green-500': settings.custom_charset?.length === settings.charset
             }"
-                            x-text="`${settings.custom_charset.length}/${settings.charset}`"
+                            x-text="`${settings.custom_charset?.length}/${settings.charset}`"
                         ></span>
                     </div>
                     <div
