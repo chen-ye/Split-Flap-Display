@@ -1,6 +1,17 @@
 import Alpine from "alpinejs";
 window.Alpine = Alpine;
 
+// Same as SplitFlapWebServer.h DisplayMode
+const DisplayMode = {
+    SingleInput: 0,
+    MultiInput: 1,
+    Date: 2,
+    Time: 3,
+    Mqtt: 4,
+    RandomTest: 5,
+    CheckMagnets: 6
+}
+
 document.addEventListener("alpine:init", () => {
     Alpine.data("page", (type) => ({
         get header() {
