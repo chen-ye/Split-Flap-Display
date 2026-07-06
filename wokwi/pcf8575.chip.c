@@ -91,9 +91,22 @@ typedef struct {
   int      charset_size;
   buffer_t fb;
   int      current_char_idx;
+  timer_t  render_timer;
+  bool     dirty;           // framebuffer needs a redraw
 } chip_state_t;
 
 static const char CHARSET[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789':/?!.->#$%";
+
+// Forward declaration (defined below)
+static void render_display(chip_state_t *chip);
+
+// ── Render timer callback (~30 fps cap) ──────────────────────────────────────
+// Called by Wokwi's timer infrastructure; never blocks the I2C path.
+static void on_render_timer(void *user_data) {
+  chip_state_t *chip = (chip_state_t *)user_data;
+  chip->dirty = false;
+  render_display(chip);
+}
 
 // ── Framebuffer renderer ──────────────────────────────────────────────────────
 static void render_display(chip_state_t *chip) {
@@ -206,7 +219,11 @@ static bool on_i2c_write(void *user_data, uint8_t data) {
         int char_idx = (int)((chip->step_count + (step_size / 2.0f)) / step_size) % chip->charset_size;
         if (char_idx != chip->current_char_idx) {
           chip->current_char_idx = char_idx;
-          render_display(chip);
+          // Only schedule a redraw if one isn't already pending
+          if (!chip->dirty) {
+            chip->dirty = true;
+            timer_start(chip->render_timer, 33333, false); // ~30 fps
+          }
         }
       }
     }
@@ -283,6 +300,15 @@ void chip_init(void) {
   // Framebuffer: must be called from chip_init only
   uint32_t fw = FB_W, fh = FB_H;
   chip->fb = framebuffer_init(&fw, &fh);
+  chip->dirty = false;
+
+  // Render timer – fires once per dirty cycle, capping renders at ~30 fps
+  const timer_config_t timer_cfg = {
+    .callback  = on_render_timer,
+    .user_data = chip,
+  };
+  chip->render_timer = timer_init(&timer_cfg);
+
   render_display(chip); // draw initial blank panel
 
   // Set up I2C slave
