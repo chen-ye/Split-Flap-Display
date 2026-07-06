@@ -1,6 +1,10 @@
 {
   "name": "pcf8575",
-  "author": "Antigravity",
+  "author": "Chen Ye",
+  "display": {
+    "width": 48,
+    "height": 64
+  },
   "pins": [
     "GND", "VCC", "SDA", "SCL", "INT",
     "P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7",
