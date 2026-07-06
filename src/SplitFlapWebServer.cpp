@@ -24,7 +24,8 @@ static const int powers_to_try_count = sizeof(powers_to_try) / sizeof(powers_to_
 SplitFlapWebServer::SplitFlapWebServer(JsonSettings &settings)
     : settings(settings), server(80), multiWordDelay(1000), rebootRequired(false), attemptReconnect(false),
       multiWordCurrentIndex(0), numMultiWords(0), wifiCheckInterval(1000), connectionMode(0), checkDateInterval(250),
-      centering(1), wifiState(WiFiState::CONNECTING), currentPowerIndex(0), lastConnectedTime(0), disconnectTime(0) {
+      centering(1), wifiState(WiFiState::CONNECTING), currentPowerIndex(0), lastConnectedTime(0), disconnectTime(0),
+      wifiDisconnectedFlag(false) {
     lastSwitchMultiTime = millis();
 }
 
@@ -35,6 +36,13 @@ void SplitFlapWebServer::init() {
     }
 
     setTimezone();
+
+    WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
+        if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+            Serial.printf("Wi-Fi disconnected event received. Reason: %d\n", info.wifi_sta_disconnected.reason);
+            this->wifiDisconnectedFlag = true;
+        }
+    }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 }
 
 void SplitFlapWebServer::setTimezone() {
@@ -164,10 +172,10 @@ void SplitFlapWebServer::loop() {
         case WiFiState::CONNECTING:
             if (WiFi.status() == WL_CONNECTED) {
                 wifiState = WiFiState::CONNECTED;
+                wifiDisconnectedFlag = false; // Reset the flag on successful connection
                 if (onStateChange) onStateChange(wifiState);
                 connectionMode = 1;
                 WiFi.softAPdisconnect(true);
-                WiFi.setAutoReconnect(true);
                 WiFi.persistent(true);
                 Serial.println("Connected to Wi-Fi!");
                 Serial.println("IP Address: http://" + WiFi.localIP().toString());
@@ -197,8 +205,9 @@ void SplitFlapWebServer::loop() {
         case WiFiState::CONNECTED:
             if (WiFi.status() == WL_CONNECTED) {
                 lastConnectedTime = millis();
-            } else if (millis() - lastConnectedTime > 5000) { // Debounce disconnection for 5 seconds
+            } else if (wifiDisconnectedFlag || millis() - lastConnectedTime > 5000) { // Catch event or fallback debounce
                 Serial.println("Wi-Fi lost! Reconnecting...");
+                wifiDisconnectedFlag = false; // Reset the flag
                 wifiState = WiFiState::DISCONNECTED;
                 disconnectTime = millis();
                 if (onStateChange) onStateChange(wifiState);
@@ -332,7 +341,10 @@ bool SplitFlapWebServer::connectToWifi() {
         Serial.print("Power Level Index: ");
         Serial.println(currentPowerIndex);
 
+        WiFi.disconnect();
+        delay(10);
         WiFi.mode(WIFI_STA);
+        WiFi.setAutoReconnect(false);
         WiFi.setTxPower(power_to_try);
         WiFi.begin(this->ssid.c_str(), this->pass.c_str());
 

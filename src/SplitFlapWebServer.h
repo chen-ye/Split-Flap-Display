@@ -133,4 +133,5 @@ class SplitFlapWebServer {
     int currentPowerIndex = 0;
     unsigned long lastConnectedTime;
     unsigned long disconnectTime;
+    volatile bool wifiDisconnectedFlag = false;
 };
