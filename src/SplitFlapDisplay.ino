@@ -8,6 +8,7 @@
 #include "SplitFlapDisplay.h"
 #include "SplitFlapMqtt.h"
 #include "SplitFlapWebServer.h"
+#include "BLELogger.h"
 #include "soc/rtc_cntl_reg.h"
 #include "soc/soc.h"
 
@@ -58,6 +59,7 @@ void setup() {
 
     // put your setup code here, to run once:
     Serial.begin(SERIAL_SPEED);
+    Logger.begin("SplitFlap-Log"); // starts BLE advertising (no-op in non-BLE builds)
 
 #ifdef STARTUP_DELAY
     delay(STARTUP_DELAY);
